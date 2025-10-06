@@ -1,0 +1,59 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model IPOCompany {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  sector        String
+  registrar     String
+  status        String
+  openDate      DateTime?
+  closeDate     DateTime?
+  allotmentDate DateTime?
+  listingDate   DateTime?
+  issuePrice    Float?
+  lotSize       Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  allotments    AllotmentCheck[]
+
+  @@index([registrar])
+  @@index([status])
+}
+
+model AllotmentCheck {
+  id                String   @id @default(cuid())
+  companyId         String
+  panNumber         String
+  applicationNumber String?
+  dpId              String?
+  clientId          String?
+  status            String   // allotted, not_allotted, pending
+  sharesAllotted    Int?
+  amountPaid        Float?
+  refundAmount      Float?
+  listingGains      Float?
+  gainPercentage    Float?
+  checkedAt         DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  company           IPOCompany @relation(fields: [companyId], references: [id])
+
+  @@index([panNumber])
+  @@index([companyId])
+  @@index([checkedAt])
+}
