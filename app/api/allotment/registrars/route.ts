@@ -19,33 +19,37 @@ export async function GET() {
     const companies = await redis.get<Array<{ registrar: string; name: string }>>(companiesCacheKey)
 
     const registrars = [
-      { value: "kfin", label: "KFin Technologies", icon: "⚡", available: false },
-      { value: "bigshare", label: "Bigshare Services", icon: "📊", available: false },
-      { value: "link-intime", label: "Link Intime", icon: "🔗", available: false },
-      { value: "mas", label: "MAS Services", icon: "🏢", available: false },
-      { value: "skyline", label: "Skyline Financial", icon: "🏗️", available: false },
+      { value: "kfin", label: "KFin Technologies", icon: "⚡", available: false, count: 0 },
+      { value: "bigshare", label: "Bigshare Services", icon: "📊", available: false, count: 0 },
+      { value: "linkintime", label: "Link Intime", icon: "🔗", available: false, count: 0 },
     ]
 
     // Mark registrars as available if they have active IPOs
     if (companies && Array.isArray(companies)) {
-      const activeRegistrars = new Set(companies.map(c => c.registrar))
+      const registrarCounts = companies.reduce((acc, company) => {
+        const reg = company.registrar
+        acc[reg] = (acc[reg] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
 
       registrars.forEach(reg => {
-        if (activeRegistrars.has(reg.value)) {
+        const count = registrarCounts[reg.value] || 0
+        if (count > 0) {
           reg.available = true
+          reg.count = count
         }
       })
     }
 
-    // Only return registrars that have active IPOs
-    const availableRegistrars = registrars.filter(r => r.available)
-
+    // Return all registrars (show all, even if no active IPOs)
     // Cache for 1 hour
-    await redis.setex(cacheKey, 3600, availableRegistrars)
+    await redis.setex(cacheKey, 3600, registrars)
 
     return NextResponse.json({
-      registrars: availableRegistrars,
+      registrars: registrars,
       cached: false,
+      totalCompanies: companies?.length || 0,
+      availableCount: registrars.filter(r => r.available).length,
     })
   } catch (error) {
     console.error('Error fetching registrars:', error)

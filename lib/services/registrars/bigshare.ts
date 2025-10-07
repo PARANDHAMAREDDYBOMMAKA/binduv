@@ -3,7 +3,7 @@ import * as cheerio from 'cheerio'
 import type { AllotmentRequest, AllotmentResponse, RegistrarService } from './types'
 
 export class BigshareService implements RegistrarService {
-  private baseUrl = 'https://www.bigshareonline.com/ipo_allotment_status.aspx'
+  private baseUrl = 'https://ipo.bigshareonline.com/ipo_status.html'
 
   async checkAllotment(request: AllotmentRequest): Promise<AllotmentResponse> {
     try {

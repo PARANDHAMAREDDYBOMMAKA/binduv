@@ -59,18 +59,17 @@ const AllotmentPage = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<AllotmentResult | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [allCompanies, setAllCompanies] = useState<Array<{ name: string; sector: string; status?: string; registrar?: string }>>([])
-  const [filteredCompanies, setFilteredCompanies] = useState<Array<{ name: string; sector: string; status?: string; registrar?: string }>>([])
+  const [allCompanies, setAllCompanies] = useState<Array<{ name: string; sector?: string; status?: string; registrar?: string; ipoType?: string }>>([])
+  const [filteredCompanies, setFilteredCompanies] = useState<Array<{ name: string; sector?: string; status?: string; registrar?: string; ipoType?: string }>>([])
   const [loadingCompanies, setLoadingCompanies] = useState(true)
   const [companiesError, setCompaniesError] = useState<string | null>(null)
-  const [registrars, setRegistrars] = useState<Array<{ value: string; label: string; icon: string }>>([])
+  const [registrars, setRegistrars] = useState<Array<{ value: string; label: string; icon: string; count?: number }>>([])
   const [loadingRegistrars, setLoadingRegistrars] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const pageRef = useRef<HTMLDivElement>(null)
   const heroRef = useRef<HTMLDivElement>(null)
 
-  // Fetch registrars and companies from API on mount - ONLY scraped data
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = async () => {
       // Fetch companies first
       setLoadingCompanies(true)
       setCompaniesError(null)
@@ -89,7 +88,7 @@ const AllotmentPage = () => {
         } else {
           setAllCompanies([])
           setFilteredCompanies([])
-          setCompaniesError('No active IPOs found from registrars')
+          setCompaniesError('No active companies found from registrars')
         }
       } catch (error) {
         console.error('Error fetching companies:', error)
@@ -117,6 +116,22 @@ const AllotmentPage = () => {
       }
     }
 
+  const refreshData = async () => {
+    setRefreshing(true)
+    try {
+      // Trigger scraper sync
+      await fetch('/api/scraper/sync', { method: 'POST' })
+      // Reload data
+      await fetchData()
+    } catch (error) {
+      console.error('Error refreshing data:', error)
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  // Fetch registrars and companies from API on mount - ONLY scraped data
+  useEffect(() => {
     fetchData()
   }, [])
 
@@ -184,7 +199,7 @@ const AllotmentPage = () => {
       newErrors.panNumber = "Invalid PAN format (e.g., ABCDE1234F)"
     }
 
-    if (formData.registrar === "link-intime" && !formData.applicationNumber) {
+    if (formData.registrar === "linkintime" && !formData.applicationNumber) {
       newErrors.applicationNumber = "Application number is required for Link Intime"
     }
 
@@ -323,6 +338,31 @@ const AllotmentPage = () => {
           </Link>
         </motion.div>
 
+        {/* Refresh Button */}
+        <div className="flex justify-end mb-4">
+          <motion.button
+            onClick={refreshData}
+            disabled={refreshing}
+            whileHover={{ scale: refreshing ? 1 : 1.05 }}
+            whileTap={{ scale: refreshing ? 1 : 0.95 }}
+            className="glass-subtle rounded-xl px-6 py-3 flex items-center space-x-2 text-sm font-medium text-cyan-400 hover:text-cyan-300 transition-colors disabled:opacity-50"
+          >
+            {refreshing ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-cyan-400/30 border-t-cyan-400" />
+                <span>Refreshing Data...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Refresh Registrar Data</span>
+              </>
+            )}
+          </motion.button>
+        </div>
+
         {/* Enhanced Hero Section */}
         <div ref={heroRef} className="text-center mb-20">
           <motion.div
@@ -348,8 +388,8 @@ const AllotmentPage = () => {
             {/* Stats Row */}
             <div className="flex justify-center space-x-8 pt-8">
               {[
-                { label: "Registrars", value: "5+", icon: Building },
-                { label: "Success Rate", value: "99.9%", icon: TrendingUp },
+                { label: "Registrars", value: registrars.length || "3", icon: Building },
+                { label: "Active IPOs", value: allCompanies.length || "0", icon: TrendingUp },
                 { label: "Secure", value: "SSL", icon: Shield },
               ].map((stat, index) => {
                 const Icon = stat.icon
@@ -458,13 +498,13 @@ const AllotmentPage = () => {
                     ) : !formData.registrar ? (
                       <option value="" className="bg-gray-800">Please select a registrar first</option>
                     ) : filteredCompanies.length === 0 ? (
-                      <option value="" className="bg-gray-800">No IPOs for this registrar</option>
+                      <option value="" className="bg-gray-800">No companies for this registrar</option>
                     ) : (
                       <>
                         <option value="" className="bg-gray-800">Select Company ({filteredCompanies.length} available)</option>
                         {filteredCompanies.map((company, index) => (
                           <option key={`${company.name}-${index}`} value={company.name} className="bg-gray-800">
-                            {company.name} • {company.sector}
+                            {company.name}
                           </option>
                         ))}
                       </>
@@ -531,7 +571,7 @@ const AllotmentPage = () => {
 
             {/* Conditional Fields */}
             <AnimatePresence>
-              {formData.registrar === "link-intime" && (
+              {formData.registrar === "linkintime" && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}

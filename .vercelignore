@@ -1,0 +1,33 @@
+# Python virtual environment
+scrapers/venv/
+scrapers/__pycache__/
+scrapers/**/__pycache__/
+scrapers/**/*.pyc
+
+# Local environment files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Testing
+coverage/
+.coverage
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.github/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db

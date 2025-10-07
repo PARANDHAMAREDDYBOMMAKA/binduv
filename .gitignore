@@ -41,3 +41,16 @@ yarn-error.log*
 next-env.d.ts
 
 /app/generated/prisma
+
+# Python
+scrapers/venv/
+scrapers/__pycache__/
+scrapers/**/__pycache__/
+scrapers/**/*.pyc
+*.py[cod]
+*$py.class
+*.so
+
+# Scraper debug files
+scrapers/*.html
+scrapers/*.log

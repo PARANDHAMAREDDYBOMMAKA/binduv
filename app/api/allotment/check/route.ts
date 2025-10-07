@@ -6,6 +6,8 @@ import type { AllotmentRequest, AllotmentResponse } from '@/lib/services/registr
 export async function POST(request: NextRequest) {
   try {
     const body: AllotmentRequest = await request.json()
+    // Use Python scraper by default (more reliable)
+    const usePythonScraper = request.nextUrl.searchParams.get('use_python') !== 'false'
 
     // Validate required fields
     if (!body.registrar || !body.companyName || !body.panNumber) {
@@ -31,8 +33,30 @@ export async function POST(request: NextRequest) {
 
     console.log('Cache miss for:', cacheKey)
 
-    // Fetch from registrar
-    const result = await RegistrarFactory.checkAllotment(body)
+    let result: AllotmentResponse
+
+    // Use Python scraper if requested (more reliable for production)
+    if (usePythonScraper) {
+      console.log('Using Python scraper for allotment check')
+      const scraperResponse = await fetch(`${request.nextUrl.origin}/api/scraper/check-allotment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          registrar: body.registrar,
+          pan: body.panNumber,
+          companyValue: body.companyName,
+          applicationNumber: body.applicationNumber,
+          dpId: body.dpId,
+          clientId: body.clientId,
+        }),
+      })
+
+      const scraperData = await scraperResponse.json()
+      result = scraperData.success ? scraperData.data : { status: 'error', message: scraperData.error }
+    } else {
+      // Use TypeScript-based scraper (fallback)
+      result = await RegistrarFactory.checkAllotment(body)
+    }
 
     // Cache the result for 5 minutes (300 seconds)
     // Only cache successful results
@@ -43,6 +67,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ...result,
       cached: false,
+      method: usePythonScraper ? 'python' : 'typescript',
     })
   } catch (error) {
     console.error('Allotment check error:', error)
